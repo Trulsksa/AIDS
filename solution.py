@@ -4,14 +4,14 @@ import search
 
 class GardenerProblem(search.Problem):
     def __init__(self):
-        # Call parent constructor (not strictly necessary here, but good practice)
-        super().__init__(initial=None)
+        super().__init__(initial=None) # Call parent constructor (not strictly necessary here, but good practice), need to understand 
         # Problem data
         self.N = 0
         self.M = 0
         self.W0 = 0
         self.grid = []
         self.plants = {}
+
 
     def load(self, fh):
         """Load the grid and plant info from file handle fh."""
@@ -27,13 +27,16 @@ class GardenerProblem(search.Problem):
             wk, dk = map(int, line.split())
             self.plants[idx] = (wk, dk)
 
-    def check_solution(self, plan, verbose=False) -> bool:
+
+    def check_solution(self, plan, verbose=False) -> bool:  # trenger vi egt verbose her hmm
         row, col = 0, 0
         water = self.W0
         time = 0
         watered = set()
 
-        for action in plan:
+        # for each action we need to fist do the acton and then we can check the state of our position and grid to validate weather the plan has failed or we can continue 
+        # If all tests are passed when the plan loop is completed the function returns True
+        for action in plan:  
             if action == "U": row -= 1
             elif action == "D": row += 1
             elif action == "L": col -= 1
@@ -49,7 +52,7 @@ class GardenerProblem(search.Problem):
             else:
                 return False  # invalid character
             
-            time += 1
+            time += 1 # important to add after the Water action as else the test will fail
 
             # Check boundaries and obstacles
             if not (0 <= row < self.N and 0 <= col < self.M): return False
@@ -66,31 +69,3 @@ class GardenerProblem(search.Problem):
                     return False
 
         return True
-    
-
-
-
-from pathlib import Path
-folder = Path(__file__).parent.parent / "public1"
-
-results = []
-for i in range(10):
-    stem = f"ex{i}"
-    dat_path  = folder / f"{stem}.dat"
-    plan_path = folder / f"{stem}.plan"
-
-    gp = GardenerProblem()
-    with open(dat_path) as f:
-        gp.load(f)
-
-    # print(f"\n=== {stem}.dat ===")
-    # for row in gp.grid:
-    #     print(" ".join(f"{cell:2}" for cell in row))
-    # print("Plants:", gp.plants)
-    # print("Tank capacity:", gp.W0)
-
-    with open(plan_path) as f:
-        plan = f.read().strip()
-    solution = gp.check_solution(plan, verbose=True)
-    print(f"Checking {stem} → {solution}")
-    results.append(solution)
