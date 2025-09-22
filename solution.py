@@ -1,5 +1,7 @@
 import search 
 
+# we can make the namings more descriptive in relation to the context of the problem
+
 class GardenerProblem(search.Problem):
     def __init__(self):
         # Call parent constructor (not strictly necessary here, but good practice)
@@ -17,7 +19,7 @@ class GardenerProblem(search.Problem):
         # First line: N, M, W0
         self.N, self.M, self.W0 = map(int, lines[0].split())
 
-        self.grid = []
+        self.grid = [] 
         for i in range(1, 1 + self.N):
             self.grid.append(list(map(int, lines[i].split())))
 
