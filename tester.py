@@ -1,8 +1,9 @@
+#tester.py
 from solution import GardenerProblem
 from pathlib import Path
 
 
-public_test_data = Path(__file__).parent / "public1"
+public_test_data = Path(__file__).parent / "public2"
 
 solutions: list[bool] = [True, False, False, False, False, False, True, False, True, False]
 results: list[bool] = []
