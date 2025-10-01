@@ -14,10 +14,10 @@ class GardenerProblem(search.Problem):
         self.grid = []
         self.plants = {}          # plant_type -> (wk, dk)
 
-        # A2-forberedelser
+        # A2-forberedelser: se forklaring hvordan dette fungerer lenger nede i load()
         self.plant_positions = [] # liste over (i,j) for alle planteceller, i fast rekkefølge
         self.pos_to_bit = {}      # (i,j) -> bitindeks i masken
-        self.full_mask = 0
+        self.full_mask = 0      # maske med alle planter vannet
 
     def load(self, fh):
         """Load the grid and plant info from file handle fh, and set self.initial (A2)."""
@@ -36,29 +36,41 @@ class GardenerProblem(search.Problem):
             wk, dk = map(int, line.split())
             self.plants[idx] = (wk, dk)
 
-        # Bygg plante-mapping for A2
-        self.plant_positions = []
-        self.pos_to_bit = {}
+        # Bygg plante-mapping for A2: 
+        # Det som skjer under her er at vi lager en liste over alle planteposisjoner (i,j) i rekkefølge vi finner dem i grid,
+        # og en ordbok som mapper hver (i,j) til en unik bit-indeks (0, 1, 2, ...). Dette gjør det enkelt å representere hvilke 
+        # planter som er vannet med en bitmaske. F.eks. hvis vi har 3 planter, vil full_mask være 0b111 (7 i desimal), 
+        # og hvis vi har vannet de to første, vil masken være 0b011 (3 i desimal). Vi kan så bruke bit-operasjoner for å sjekke 
+        # og oppdatere denne masken effektivt. Hvis vi vil sjekke for eksempel om den andre planten er vannet, kan vi gjøre (mask & (1 << 1)) != 0. 
+        # Eller om vi vil markere den tredje planten som vannet, kan vi gjøre mask |= (1 << 2). Eller sjekke om alle planter er vannet ved å sammenligne mask med full_mask.
+        
+        self.plant_positions = [] #Starter tom her
+        self.pos_to_bit = {}     #Starter tom her
         for i in range(self.N):
             for j in range(self.M):
-                if self.grid[i][j] > 0:
-                    bit = len(self.plant_positions)
-                    self.plant_positions.append((i, j))
-                    self.pos_to_bit[(i, j)] = bit
+                if self.grid[i][j] > 0: #Hvis vi altså har en plante
+                    bit = len(self.plant_positions) #Settes bit til denne til nåværende lengde (første er 0 også videre oppover)
+                    self.plant_positions.append((i, j)) #Legger til i liste over planteposisjoner
+                    self.pos_to_bit[(i, j)] = bit #Mapper posisjon til bit, første plante får bit 0, andre får bit 1 osv 
 
-        self.full_mask = (1 << len(self.plant_positions)) - 1
-
+        self.full_mask = (1 << len(self.plant_positions)) - 1 #Her lager vi en maske med alle planter vannet. Hvis vi har 3 planter, blir dette 0b111 (7 i desimal).
+        
         # Initial state for A2: (row, col, water, watered_mask, time)
-        self.initial = (0, 0, self.W0, 0, 0)
+        self.initial = (0, 0, self.W0, 0, 0) # Starter i posisjon (0,0) med full vann, ingen vannet, tid 0
 
     # ----------------------------
     # Assignment 1 validator
     # ----------------------------
     def check_solution(self, plan, verbose=False) -> bool:
+        
+        # Initialisering
         row, col = 0, 0
         water = self.W0
         time = 0
-        watered = set()
+        watered = set() 
+        # Bruker set og ikke mitt bitmaskekode her for enkelhets skyld, 
+        # skal ikke være effektivt her som i A2 hvor vi trenger å sjekke mange ganger med BFS
+        # watered blir da {(0, 2), (3, 1), (2, 4)} for eksempel
 
         for action in plan:
             # Utfør handling
@@ -78,12 +90,17 @@ class GardenerProblem(search.Problem):
                 if self.grid[row][col] == -1:
                     if verbose: print("Obstacle at W location")
                     return False
-
-                plant_type = self.grid[row][col]
-                if plant_type <= 0:
+                
+                # Hvis koden kjører hit uten å ha returnert, vet vi at vi er på et gyldig sted for vanning
+                
+                plant_type = self.grid[row][col] # Hent plantetype
+                if plant_type <= 0: 
                     if verbose: print("No plant to water here")
                     return False
-                wk, dk = self.plants[plant_type]
+                
+                # Hvis vi kjører hit, vet vi at vi har en plante som kan vannes
+                
+                wk, dk = self.plants[plant_type] # Hent vann- og deadline-krav for denne plantetypen
                 if water < wk:
                     if verbose: print("Not enough water")
                     return False
@@ -93,13 +110,18 @@ class GardenerProblem(search.Problem):
                 if (row, col) in watered:
                     if verbose: print("Plant already watered")
                     return False
-                water -= wk
-                watered.add((row, col))
+
+                # Hvis vi kjører hit, vet vi at vi har nok vann, innen deadline, og planten er ikke vannet fra før
+
+                water -= wk # Bruk vann
+                watered.add((row, col)) # Legger til posisjonen til planten som er vannet i settet
             else:
                 if verbose: print(f"Invalid action {action}")
                 return False
-
-            time += 1
+            
+            #Hvis vi kjører hit, har vi utført en gyldig handling
+        
+            time += 1 # Øk tid med 1 for hver handling (uansett type) 
 
             # Felles grense- og hinder-sjekk (etter action)
             if not (0 <= row < self.N and 0 <= col < self.M):
@@ -113,14 +135,16 @@ class GardenerProblem(search.Problem):
             if (row, col) == (0, 0):
                 water = self.W0
 
-        # Etter planen: alle planter må være vannet
+        # Hvis vi kjører hit, er planen ferdig kjørt uten å bryte noen regler 
+        
+        # Nå må vi sjekke at alle planter er vannet (og ingen er glemt) 
         for i in range(self.N):
             for j in range(self.M):
                 if self.grid[i][j] > 0 and (i, j) not in watered:
                     if verbose: print(f"Unwatered plant at {(i,j)}")
-                    return False
+                    return False # Fant en plante som ikke er vannet med den planen, fikser ikke det her men forteller at planen er ugyldig 
 
-        return True
+        return True # Hvis vi har kjørt gjennom hele planen uten å returnere False, er planen gyldig
 
     # ----------------------------
     # Assignment 2: Uninformed Search API
